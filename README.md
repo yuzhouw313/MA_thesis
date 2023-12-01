@@ -1,1 +1,3 @@
 # MA_thesis
+
+This research aims to uncover the intricate correlation between online Sinophobia, measured by explicit comments under relevant YouTube videos and implicit Google searches on pertinent keywords, and offline anti-Chinese violence incidents, measured by official FBI hate crime report and self-report survey in the context of the covid pandemic. It seeks to empower policymakers, community leaders, and social media platforms in their efforts to counter Sinophobic sentiment and violence, fostering inclusivity in the United States. Ultimately, the research intends to answer the question: What is the relationship between online Sinophobic sentiment, as influenced by Covid-19-related news, and the occurrence of offline anti-Chinese hate incidents? 
