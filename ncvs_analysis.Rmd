@@ -1,0 +1,198 @@
+---
+title: "NCVS_analysis"
+output: html_document
+date: "2024-02-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lattice)
+library(dplyr)
+```
+
+First load DS0002 (Household Record-Type)
+
+```{r}
+load("/Users/itsyuzhou/Desktop/NCVS/DS0002/38429-0002-Data.rda")
+load("/Users/itsyuzhou/Desktop/NCVS/DS0004/38429-0004-Data.rda")
+
+ls()
+```
+
+```{r}
+household <- `da38429.0002`
+incident <- `da38429.0004`
+```
+
+Inspect tables
+
+```{r}
+head(household)
+```
+
+Among the household table, filter Asian household
+
+```{r}
+household %>% filter(!is.na(household$V2040A) & grepl("Asian", household$V2040A, ignore.case = TRUE)) %>% select(V2040A) 
+```
+
+```{r}
+household %>%
+  filter(!is.na(V2040A) & grepl("Asian", V2040A, ignore.case = TRUE)) %>%
+  select(V2040A) %>%
+  pull() %>%
+  unique()
+```
+Therefore we have the above 8 types of Asian household
+
+```{r}
+dim(household)
+```
+
+
+
+Now look at the incident table
+```{r}
+head(incident)
+```
+
+V4526A - HATE CRIME: RACE 
+```{r}
+table(incident$V4526A) 
+```
+
+V4526C - HATE CRIME: ETHNICITY 
+```{r}
+table(incident$V4526C) 
+```
+
+```{r}
+dim(incident)
+```
+number of cases = 8,982, number of Variables = 1,261
+number of race hate crime = 133, number of ethnicity hate crime = 77
+
+```{r}
+race_ethnicity_crime <- incident %>%
+  filter(V4526A == "(1) Yes" | V4526C == "(1) Yes")
+
+race_ethnicity_crime_count <- nrow(race_ethnicity_crime)
+print(race_ethnicity_crime_count)
+```
+So we see there are 146 hate crime incidents based on race or ethnicity among total 8982 incidents
+
+```{r}
+print(unique(household$YEARQ))
+print(unique(incident$YEARQ))
+```
+
+Visualize incident count:
+```{r}
+aggregated_race_ethnicity <- race_ethnicity_crime %>%
+  group_by(YEARQ) %>%
+  summarize(Count = n())
+
+aggregated_race_ethnicity
+```
+
+
+```{r}
+aggregated_complete <- incident %>%
+  group_by(YEARQ) %>%
+  summarize(Count = n())
+
+aggregated_complete
+```
+
+```{r}
+aggregated_race_ethnicity$Proportion <- aggregated_race_ethnicity$Count / aggregated_complete$Count
+
+ggplot(aggregated_race_ethnicity, aes(x = YEARQ, y = Proportion)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "YEARQ", y = "Proportion") +
+  ggtitle("Race/Ethnicity Hate Crime Rate") +
+  theme_minimal()
+```
+
+
+
+Since the goal is examining crime incidents (victimization) while taking into consideration characteristics of the person and the household, we need to merge the household table and the incident table to obtain hate crime incidents against Asian household
+
+- The first merges the household variables onto the person record using the YEARQ (YEAR AND QUARTER OF INTERVIEW) and IDHH (NCVS ID FOR HOUSEHOLDS) variables.
+
+Load and store DS0003: Person Record-Type
+This file contains information about each household member age 12 years and older as reported by that person or proxy
+```{r}
+load("/Users/itsyuzhou/Desktop/NCVS/DS0003/38429-0003-Data.rda")
+person <- `da38429.0003`
+dim(person)
+```
+
+The household file will be used as a one-to-many match. For example, a given household record may match to several person records, and the same household information will be copied onto all of the matching person records.
+```{r}
+household_person <- merge(household, person, by = c("YEARQ", "IDHH"))
+```
+
+```{r}
+dim(household_person)
+```
+
+- Second merge the first merged file with the incident record file based on YEARQ, IDHH, IDPER (the person ID)
+```{r}
+household_person_incident <- merge(household_person, incident, by = c("YEARQ", "IDHH", "IDPER"))
+dim(household_person_incident)
+```
+This table contains incident records where the incident occurred in 2020. Household and person variables are prepended to the incident records.
+
+```{r}
+output_file <- "/Users/itsyuzhou/Desktop/NCVS/household_person_incident.csv"
+write.csv(household_person_incident, file = output_file, row.names = FALSE)
+```
+
+
+V4019 - CHECK ITEM D: ENOUGH DETAIL TO DISTINGUISH INCIDENTS: Can you (respondent) recall enough details of each incident to distinguish them from each other? V4022 == 1 indicates outside U.S.
+V4022 - IN WHAT CITY, TOWN, VILLAGE: In what city, town, or village did this incident occur? V4019==2 indicates has no enough information about the incident
+
+```{r}
+filtered_table <- household_person_incident %>%
+  filter(!(V4019 == 2 | is.na(V4019)) & !(V4022 == 1 | is.na(V4022)))
+```
+
+```{r}
+dim(filtered_table)
+dim(household_person_incident)
+```
+
+Now filter race/ethnicity hate crimes
+
+```{r}
+race_ethnicity_crime1 <- household_person_incident %>%
+  filter(V4526A == "(1) Yes" | V4526C == "(1) Yes")
+
+race_ethnicity_crime_count1 <- nrow(race_ethnicity_crime1)
+print(race_ethnicity_crime_count1)
+```
+
+```{r}
+asian_race_ethnicity <- household_person_incident %>%
+  filter(grepl("Asian", V2040A, ignore.case = TRUE) & (V4526A == "(1) Yes" | V4526C == "(1) Yes"))
+```
+
+```{r}
+dim(asian_race_ethnicity)
+```
+
+Among hate crimes based on race or ethnicity, check how many are Asian household
+```{r}
+race_ethnicity_crime1 %>% filter(!is.na(race_ethnicity_crime1$V2040A) & grepl("Asian", race_ethnicity_crime1$V2040A, ignore.case = TRUE)) %>% select(V2040A) 
+```
+Total 17 cases of Asian-based race/ethnicity hate crimes, 16 of which are Asian only household, 1 is White-Asian household
+
+
+
+
+
