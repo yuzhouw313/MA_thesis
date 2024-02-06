@@ -192,7 +192,33 @@ race_ethnicity_crime1 %>% filter(!is.na(race_ethnicity_crime1$V2040A) & grepl("A
 ```
 Total 17 cases of Asian-based race/ethnicity hate crimes, 16 of which are Asian only household, 1 is White-Asian household
 
+```{r}
+household_person_incident %>% filter(!is.na(household_person_incident$V2040A) & grepl("Asian", household_person_incident$V2040A, ignore.case = TRUE)) %>% select(V2040A) 
+```
 
+```{r}
+asian_incident <- household_person_incident %>%
+  filter(!is.na(V2040A) & grepl("Asian", V2040A, ignore.case = TRUE))
+
+aggregated_asian_incident <- asian_incident %>%
+  group_by(YEARQ) %>%
+  summarize(Count = n())
+
+aggregated_asian_incident$Proportion <- aggregated_asian_incident$Count / aggregated_complete$Count
+
+ggplot(aggregated_asian_incident, aes(x = YEARQ, y = Proportion)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "YEARQ", y = "Proportion") +
+  ggtitle("Asian Race/Ethnicity Incident Rate") +
+  theme_minimal()
+```
+```{r}
+ggplot(aggregated_asian_incident, aes(x = YEARQ, y = Count)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "YEARQ", y = "Count") +
+  ggtitle("Asian Race/Ethnicity Incident Cases") +
+  theme_minimal()
+```
 
 
 
