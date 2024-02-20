@@ -14,104 +14,158 @@ library(lattice)
 library(dplyr)
 ```
 
-First load DS0002 (Household Record-Type)
-
+Load DS0002 (Household Record-Type File) and DS0004 (Incident Record-Type File)
 ```{r}
 load("/Users/itsyuzhou/Desktop/NCVS/DS0002/38429-0002-Data.rda")
 load("/Users/itsyuzhou/Desktop/NCVS/DS0004/38429-0004-Data.rda")
-
 ls()
 ```
-
 ```{r}
 household <- `da38429.0002`
 incident <- `da38429.0004`
 ```
 
-Inspect tables
 
+### Household Data Overview
+Investigate the household table, will put these variables in Appendix
 ```{r}
-head(household)
+glimpse(household)
 ```
-
-Among the household table, filter Asian household
-
-```{r}
-household %>% filter(!is.na(household$V2040A) & grepl("Asian", household$V2040A, ignore.case = TRUE)) %>% select(V2040A) 
-```
-
-```{r}
-household %>%
-  filter(!is.na(V2040A) & grepl("Asian", V2040A, ignore.case = TRUE)) %>%
-  select(V2040A) %>%
-  pull() %>%
-  unique()
-```
-Therefore we have the above 8 types of Asian household
-
 ```{r}
 dim(household)
 ```
+Total 256460 households responded in 2020, the household table has 452 variables
 
 
-
-Now look at the incident table
+### Asian Household Data Overview
+Within the household table, filter Asian households
 ```{r}
-head(incident)
+asian_household <- household %>%
+  filter(!is.na(V2040A) & grepl("Asian", V2040A, ignore.case = TRUE)) %>%
+  count(V2040A, name = "count")
+
+asian_household
 ```
 
-V4526A - HATE CRIME: RACE 
 ```{r}
-table(incident$V4526A) 
+ggplot(asian_household, aes(x = V2040A, y = count, fill = V2040A)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count), vjust = 0, size = 4) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Type of Asian Household", y = "Household Count", title = "Asian Household Components")
 ```
 
-V4526C - HATE CRIME: ETHNICITY 
-```{r}
-table(incident$V4526C) 
-```
 
+Investigate the incident table, will put these variables in Appendix
+```{r}
+glimpse(incident)
+```
 ```{r}
 dim(incident)
 ```
-number of cases = 8,982, number of Variables = 1,261
-number of race hate crime = 133, number of ethnicity hate crime = 77
+number of cases = 8982, number of Variables = 1261
+
+### Hate Crime Overview:
+
+V4526A - HATE CRIME
+```{r}
+table(incident$V4526AA)
+
+proportion_yes <- sum(incident$V4526AA == "(1) Yes", na.rm = TRUE) / sum(!is.na(incident$V4526AA))
+print(proportion_yes)
+```
+Among all incidents reported in 2020, 2.54% incidents are hate crimes
+
+There are two types of residue on multiple response variables. 
+(1) When the entire item was not ascertained. In this instance, there will be a code 8 on the lead-in variable, an 8 in each of the multiple response category variables, and an 8 on the residue variable for that multiple response question.
+(2) When there is a "yes" for the lead-in question but the specific categories of the multiple response items are not ascertained. In this situation there will be a code 1 on the lead-in variable and an 8 on the residue variable. The multiple response category variables will all have 0 entered.
+Hence the total numbers of hate crimes should be 228+26=254 for the breakdown below
+
+Overall Hate Crime Visualization:
+```{r}
+hate_df <- as.data.frame(table(incident$V4526AA))
+names(hate_df) <- c("V4526AA", "count")
+
+ggplot(hate_df, aes(x = V4526AA, y = count, fill = V4526AA)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count), vjust = -0.3, size = 3) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Hate Crime Or Not", y = "Incident Count", title = "Whether Incident is Hate Crime")
+```
+
+Hate Crime Breakdown:
+
+### V4526A - HATE CRIME: RACE 
+```{r}
+table(incident$V4526A) 
+```
+Among 254 hate crimes, 58.33% is about race
+
+Race Hate Crime Visualization:
+```{r}
+race_hate_df <- as.data.frame(table(incident$V4526A))
+names(race_hate_df) <- c("V4526A", "count")
+
+ggplot(race_hate_df, aes(x = V4526A, y = count, fill = V4526A)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count), vjust = -0.3, size = 3) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Race Hate Crime Or Not", y = "Incident Count", title = "Whether Hate Crime is About Race")
+```
+
+
+### V4526C - HATE CRIME: ETHNICITY 
+```{r}
+table(incident$V4526C) 
+```
+Among 254 hate crimes, 30.31% is about ethnicity
+
+Ethnicity Hate Crime Visualization:
+```{r}
+ethnicity_hate_df <- as.data.frame(table(incident$V4526C))
+names(ethnicity_hate_df) <- c("V4526C", "count")
+
+ggplot(ethnicity_hate_df, aes(x = V4526C, y = count, fill = V4526C)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count), vjust = -0.3, size = 3) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Ethnicity Hate Crime Or Not", y = "Incident Count", title = "Whether Hate Crime is About Ethnicity")
+```
 
 ```{r}
 race_ethnicity_crime <- incident %>%
   filter(V4526A == "(1) Yes" | V4526C == "(1) Yes")
 
-race_ethnicity_crime_count <- nrow(race_ethnicity_crime)
-print(race_ethnicity_crime_count)
+print(nrow(race_ethnicity_crime))
 ```
-So we see there are 146 hate crime incidents based on race or ethnicity among total 8982 incidents
+146 hate crime incidents based on race or ethnicity among total 8982 incidents
 
-```{r}
-print(unique(household$YEARQ))
-print(unique(incident$YEARQ))
-```
 
-Visualize incident count:
+### Temporal Analysis
+
+Visualize incident count by quarter:
+Race and ethnicity hate crime:
 ```{r}
-aggregated_race_ethnicity <- race_ethnicity_crime %>%
+quarterly_race_ethnicity_hate <- race_ethnicity_crime %>%
   group_by(YEARQ) %>%
   summarize(Count = n())
 
-aggregated_race_ethnicity
+quarterly_race_ethnicity_hate
 ```
 
-
+All hate crime:
 ```{r}
-aggregated_complete <- incident %>%
+quarterly_hate <- incident %>%
   group_by(YEARQ) %>%
   summarize(Count = n())
 
-aggregated_complete
+quarterly_hate
 ```
 
 ```{r}
-aggregated_race_ethnicity$Proportion <- aggregated_race_ethnicity$Count / aggregated_complete$Count
+quarterly_race_ethnicity_hate$Proportion <- quarterly_race_ethnicity_hate$Count / quarterly_hate$Count
 
-ggplot(aggregated_race_ethnicity, aes(x = YEARQ, y = Proportion)) +
+ggplot(quarterly_race_ethnicity_hate, aes(x = YEARQ, y = Proportion)) +
   geom_bar(stat = "identity", fill = "blue") +
   labs(x = "YEARQ", y = "Proportion") +
   ggtitle("Race/Ethnicity Hate Crime Rate") +
@@ -119,106 +173,259 @@ ggplot(aggregated_race_ethnicity, aes(x = YEARQ, y = Proportion)) +
 ```
 
 
+```{r}
+incident <- incident %>%
+  mutate(
+    Month = as.numeric(sub("^\\((\\d+)\\).*", "\\1", V4014)), # Extract numeric month
+    YearMonth = paste(V4015, sprintf("%02d", Month), "01", sep = "-"), # Combine with year
+    Date = as.Date(YearMonth, format = "%Y-%m-%d") # Convert to Date object
+  )
 
-Since the goal is examining crime incidents (victimization) while taking into consideration characteristics of the person and the household, we need to merge the household table and the incident table to obtain hate crime incidents against Asian household
+monthly_crimes <- incident %>%
+  group_by(Date) %>%
+  summarize(Count = n(), .groups = 'drop')
+
+monthly_crimes
+```
+
+Visualization of monthly incidents:
+```{r}
+ggplot(monthly_crimes, aes(x = Date, y = Count)) +
+  geom_line() +
+  geom_point() +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Month", y = "Incident Count", title = "Monthly Incident Count")
+```
+
+```{r}
+race_ethnicity_crime <- race_ethnicity_crime %>%
+  mutate(
+    Month = as.numeric(sub("^\\((\\d+)\\).*", "\\1", V4014)), # Extract numeric month
+    YearMonth = paste(V4015, sprintf("%02d", Month), "01", sep = "-"), # Combine with year
+    Date = as.Date(YearMonth, format = "%Y-%m-%d") # Convert to Date object
+  )
+
+monthly_race_ethnicity_hate <- race_ethnicity_crime %>%
+  group_by(Date) %>%
+  summarize(Count = n())
+
+monthly_race_ethnicity_hate
+```
+
+Visualization of monthly race/ethnicity hate crimes:
+```{r}
+ggplot(monthly_race_ethnicity_hate, aes(x = Date, y = Count)) +
+  geom_line() +
+  geom_point() +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Month", y = "Incident Count", title = "Monthly Race/Ethnicity Hate Crime")
+```
+```{r}
+month_race_ethnicity_rate <- monthly_race_ethnicity_hate %>%
+  left_join(monthly_crimes, by = "Date", suffix = c("_hate", "_total")) %>%
+  mutate(Ratio = Count_hate / Count_total)
+
+month_race_ethnicity_rate
+```
+Visualize proportion of hate crimes:
+```{r}
+ggplot(ratio_data, aes(x = Date, y = Ratio)) +
+  geom_line(color = "blue", group = 1) +  # Ensures that all points are connected by a line
+  geom_point(color = "red") +  # Emphasizes individual data points
+  geom_text(aes(label = round(Ratio, 2)), vjust = -0.5, check_overlap = TRUE, size = 3) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") +  # Customizes the date breaks and labels
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Improves the readability of the date labels
+  labs(x = "Date", y = "Ratio of Hate to Total Incidents", title = "Monthly Ratio of Race/Ethnicity Hate Incidents")
+```
+
+
+### Merge Household, Person, and Incident data
+Since the goal is examining crime incidents (victimization) while taking into consideration characteristics of the person and the household, merge the household table and the incident table to obtain hate crime incidents against Asian household
 
 - The first merges the household variables onto the person record using the YEARQ (YEAR AND QUARTER OF INTERVIEW) and IDHH (NCVS ID FOR HOUSEHOLDS) variables.
 
-Load and store DS0003: Person Record-Type
-This file contains information about each household member age 12 years and older as reported by that person or proxy
+Load and store DS0003: Person Record-Type （contains information about each household member age 12 years and older as reported by that person or proxy）
 ```{r}
 load("/Users/itsyuzhou/Desktop/NCVS/DS0003/38429-0003-Data.rda")
 person <- `da38429.0003`
 dim(person)
 ```
-
 The household file will be used as a one-to-many match. For example, a given household record may match to several person records, and the same household information will be copied onto all of the matching person records.
 ```{r}
-household_person <- merge(household, person, by = c("YEARQ", "IDHH"))
-```
-
-```{r}
+household_person <- household %>%
+  inner_join(person, by = c("YEARQ" = "YEARQ", "IDHH" = "IDHH"))
 dim(household_person)
 ```
 
 - Second merge the first merged file with the incident record file based on YEARQ, IDHH, IDPER (the person ID)
 ```{r}
-household_person_incident <- merge(household_person, incident, by = c("YEARQ", "IDHH", "IDPER"))
+household_person_incident <- household_person %>%
+  inner_join(incident, by = c("YEARQ", "IDHH", "IDPER"))
 dim(household_person_incident)
 ```
-This table contains incident records where the incident occurred in 2020. Household and person variables are prepended to the incident records.
+This table contains incident records where the incident occurred in 2021. Household and person variables are prepended to the incident records. So total 8982 individual incidents.
 
 ```{r}
 output_file <- "/Users/itsyuzhou/Desktop/NCVS/household_person_incident.csv"
 write.csv(household_person_incident, file = output_file, row.names = FALSE)
 ```
 
-
-V4019 - CHECK ITEM D: ENOUGH DETAIL TO DISTINGUISH INCIDENTS: Can you (respondent) recall enough details of each incident to distinguish them from each other? V4022 == 1 indicates outside U.S.
-V4022 - IN WHAT CITY, TOWN, VILLAGE: In what city, town, or village did this incident occur? V4019==2 indicates has no enough information about the incident
-
-```{r}
-filtered_table <- household_person_incident %>%
-  filter(!(V4019 == 2 | is.na(V4019)) & !(V4022 == 1 | is.na(V4022)))
-```
-
-```{r}
-dim(filtered_table)
-dim(household_person_incident)
-```
-
-Now filter race/ethnicity hate crimes
-
+### Filter race/ethnicity hate crimes
 ```{r}
 race_ethnicity_crime1 <- household_person_incident %>%
   filter(V4526A == "(1) Yes" | V4526C == "(1) Yes")
-
-race_ethnicity_crime_count1 <- nrow(race_ethnicity_crime1)
-print(race_ethnicity_crime_count1)
 ```
 
+### Filter race/ethnicity hate crimes against Asians
 ```{r}
 asian_race_ethnicity <- household_person_incident %>%
   filter(grepl("Asian", V2040A, ignore.case = TRUE) & (V4526A == "(1) Yes" | V4526C == "(1) Yes"))
 ```
 
 ```{r}
-dim(asian_race_ethnicity)
-```
-
-Among hate crimes based on race or ethnicity, check how many are Asian household
-```{r}
-race_ethnicity_crime1 %>% filter(!is.na(race_ethnicity_crime1$V2040A) & grepl("Asian", race_ethnicity_crime1$V2040A, ignore.case = TRUE)) %>% select(V2040A) 
+print(nrow(race_ethnicity_crime1))
+print(nrow(asian_race_ethnicity))
 ```
 Total 17 cases of Asian-based race/ethnicity hate crimes, 16 of which are Asian only household, 1 is White-Asian household
 
+Visualization Race/Ethnicity Hate Crimes Against Asian Household
 ```{r}
-household_person_incident %>% filter(!is.na(household_person_incident$V2040A) & grepl("Asian", household_person_incident$V2040A, ignore.case = TRUE)) %>% select(V2040A) 
-```
-
-```{r}
-asian_incident <- household_person_incident %>%
-  filter(!is.na(V2040A) & grepl("Asian", V2040A, ignore.case = TRUE))
-
-aggregated_asian_incident <- asian_incident %>%
+quarterly_asian_hate <- asian_race_ethnicity %>%
   group_by(YEARQ) %>%
   summarize(Count = n())
 
-aggregated_asian_incident$Proportion <- aggregated_asian_incident$Count / aggregated_complete$Count
+ggplot(quarterly_asian_hate, aes(x = YEARQ, y = Count)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "YEARQ", y = "Count") +
+  ggtitle("Asian Race/Ethnicity Incident Cases") +
+  theme_minimal()
+```
+```{r}
+quarterly_asian_hate$Proportion <- quarterly_asian_hate$Count / quarterly_hate$Count
 
-ggplot(aggregated_asian_incident, aes(x = YEARQ, y = Proportion)) +
+ggplot(quarterly_asian_hate, aes(x = YEARQ, y = Proportion)) +
   geom_bar(stat = "identity", fill = "blue") +
   labs(x = "YEARQ", y = "Proportion") +
   ggtitle("Asian Race/Ethnicity Incident Rate") +
   theme_minimal()
 ```
 ```{r}
-ggplot(aggregated_asian_incident, aes(x = YEARQ, y = Count)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(x = "YEARQ", y = "Count") +
-  ggtitle("Asian Race/Ethnicity Incident Cases") +
-  theme_minimal()
+asian_race_ethnicity <- asian_race_ethnicity %>%
+  mutate(
+    Month = as.numeric(sub("^\\((\\d+)\\).*", "\\1", V4014)), # Extract numeric month
+    YearMonth = paste(V4015, sprintf("%02d", Month), "01", sep = "-"), # Combine with year
+    Date = as.Date(YearMonth, format = "%Y-%m-%d") # Convert to Date object
+  )
+
+monthly_asian_hate <- asian_race_ethnicity %>%
+  group_by(Date) %>%
+  summarize(Count = n(), .groups = 'drop')
+
+monthly_asian_hate
 ```
+
+```{r}
+ggplot(monthly_asian_hate, aes(x = Date, y = Count)) +
+  geom_line() +
+  geom_point() +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Month", y = "Incident Count", title = "Monthly Race/Ethnicity Hate Crime Against Asian")
+```
+
+```{r}
+asian_hate_ratio <- monthly_race_ethnicity_hate %>%
+  left_join(monthly_asian_hate, by = "Date", suffix = c("_total", "_asian")) %>%
+  mutate(
+    Count_asian = replace_na(Count_asian, 0), # Replace NA in Asian count with 0
+    Ratio_Asian_to_Total = ifelse(Count_total > 0, Count_asian / Count_total, 0) # Calculate ratio
+  )
+
+asian_hate_ratio
+```
+
+Visualization of Race/Ethnicity Hate Crime Rates
+```{r}
+ggplot(asian_hate_ratio, aes(x = Date, y = Ratio_Asian_to_Total)) +
+  geom_line(color = "blue", group = 1) +
+  geom_point(color = "red") + 
+  geom_text(aes(label = round(Ratio_Asian_to_Total, 2)), vjust = -0.5, check_overlap = TRUE, size = 3) +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(x = "Date", y = "Ratio of Asian Hate Crimes", title = "Monthly Ratio of Asian Hate Crimes Over All Race/Ethnicity Hate Crimes")
+
+```
+
+
+V4140B6 - DID YOU FEEL-SAD OR DEPRESSED: Still thinking about your distress associated with being a victim of this crime did you feel any of the following ways for A MONTH OR MORE? Did you feel sad or depressed?
+
+```{r}
+incident %>%
+  group_by(V4140B6) %>%
+  summarize(Count = n(), .groups = 'drop')
+
+asian_race_ethnicity %>%
+  group_by(V4140B6) %>%
+  summarize(Count = n(), .groups = 'drop')
+```
+
+V4140B7 - DID YOU FEEL-VULNERABLE: Still thinking about your distress associated with being a victim of this crime did you feel any of the following ways for A MONTH OR MORE? Did you feel vulnerable?
+```{r}
+incident %>%
+  group_by(V4140B7) %>%
+  summarize(Count = n(), .groups = 'drop')
+
+asian_race_ethnicity %>%
+  group_by(V4140B7) %>%
+  summarize(Count = n(), .groups = 'drop')
+```
+
+V4140B8 - DID YOU FEEL-VIOLATED: Still thinking about your distress associated with being a victim of this crime did you feel any of the following ways for A MONTH OR MORE? Did you feel violated?
+```{r}
+incident %>%
+  group_by(V4140B8) %>%
+  summarize(Count = n(), .groups = 'drop')
+
+asian_race_ethnicity %>%
+  group_by(V4140B8) %>%
+  summarize(Count = n(), .groups = 'drop')
+```
+
+V4140B9 - DID YOU FEEL-MISTRUST (yes/no)
+```{r}
+incident %>%
+  group_by(V4140B9) %>%
+  summarize(Count = n(), .groups = 'drop')
+
+asian_race_ethnicity %>%
+  group_by(V4140B9) %>%
+  summarize(Count = n(), .groups = 'drop')
+```
+
+V4140B10 - DID YOU FEEL-UNSAFE  (yes/no)
+```{r}
+incident %>%
+  group_by(V4140B10) %>%
+  summarize(Count = n(), .groups = 'drop')
+
+asian_race_ethnicity %>%
+  group_by(V4140B10) %>%
+  summarize(Count = n(), .groups = 'drop')
+```
+
+V4140B12 - SEEK PROFESSIONAL HELP FOR FEELINGS EXPERIENCED AS VICTIM OF CRIME: Did you seek any kind of professional help for the feelings you experienced as a result of being a victim of this crime? Answer will be yes/no 
+```{r}
+incident %>%
+  group_by(V4140B12) %>%
+  summarize(Count = n(), .groups = 'drop')
+
+asian_race_ethnicity %>%
+  group_by(V4140B12) %>%
+  summarize(Count = n(), .groups = 'drop')
+```
+
 
 
 
