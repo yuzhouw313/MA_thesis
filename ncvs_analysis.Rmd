@@ -247,7 +247,7 @@ Since the goal is examining crime incidents (victimization) while taking into co
 - The first merges the household variables onto the person record using the YEARQ (YEAR AND QUARTER OF INTERVIEW) and IDHH (NCVS ID FOR HOUSEHOLDS) variables.
 
 Load and store DS0003: Person Record-Type （contains information about each household member age 12 years and older as reported by that person or proxy）
-```{r}
+```{r load person data}
 load("/Users/itsyuzhou/Desktop/NCVS/DS0003/38429-0003-Data.rda")
 person <- `da38429.0003`
 dim(person)
